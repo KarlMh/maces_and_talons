@@ -79,13 +79,14 @@ function getKingMoves(pieces, piece) {
       const occ = getPieceAt(pieces, r, c);
       // never allow stepping onto a dragon square
       if (occ && occ.type === PIECE_TYPES.DRAGON) continue;
+      // maces block king movement
+      if (getMaceAt(pieces, r, c)) continue;
       // allow capture of enemy king only if this king/hunter has mace
       if (occ) {
         if (!(occ.type === PIECE_TYPES.KING && occ.player !== piece.player && piece.hasMace)) {
           continue;
         }
       }
-      if (getMaceAt(pieces, r, c) && !(occ && occ.type===PIECE_TYPES.KING && occ.player!==piece.player && piece.hasMace)) continue;
 
       if (isWater(r, c)) {
         // kings may travel only on their own kingship; longships block them
