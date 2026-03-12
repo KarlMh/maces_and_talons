@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Uncial+Antiqua&family=IM+Fell+English:ital@0;1&family=Cinzel+Decorative:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'IM Fell English', Georgia, serif;
+  background: #1a1208;
+  overflow-x: hidden;
+}
+
+/* Parchment texture via CSS noise */
+.parchment {
+  background-color: #c8a96e;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 30% 20%, #d4b07a 0%, #b8955a 40%, #a07840 100%);
+}
+
+.parchment-dark {
+  background-color: #3d2b10;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 70% 80%, #4a3318 0%, #2d1e0a 100%);
+}
+
+/* Ink stroke border effect */
+.ink-border {
+  border: 3px solid transparent;
+  border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Crect x='0' y='0' width='10' height='10' fill='none' stroke='%23332200' stroke-width='2' rx='1'/%3E%3C/svg%3E") 3;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.5);
+}
+
+/* Hand-drawn wiggle on hover */
+@keyframes ink-wiggle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-0.8deg) scale(1.02); }
+  75% { transform: rotate(0.8deg) scale(1.02); }
+}
+
+.piece-hover:hover { animation: ink-wiggle 0.3s ease-in-out; }
+
+/* Valid move pulse */
+@keyframes valid-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.valid-move-dot { animation: valid-pulse 1.2s ease-in-out infinite; }
+
+/* Ember glow for selected */
+@keyframes ember-glow {
+  0%, 100% { box-shadow: inset 0 0 8px #e85d0480, 0 0 12px #e85d0440; }
+  50% { box-shadow: inset 0 0 14px #ff7c1080, 0 0 20px #ff7c1060; }
+}
+.selected-cell { animation: ember-glow 1.5s ease-in-out infinite; }
+
+/* Dragon scale pattern for water */
+.dragon-scale {
+  background-color: #1a3a5c;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(100,180,255,0.15) 25%, transparent 26%),
+    radial-gradient(circle at 0% 50%, rgba(100,180,255,0.1) 25%, transparent 26%),
+    radial-gradient(circle at 100% 50%, rgba(100,180,255,0.1) 25%, transparent 26%),
+    radial-gradient(circle at 50% 100%, rgba(100,180,255,0.12) 25%, transparent 26%);
+  background-size: 16px 16px;
+}
+
+/* Rune shimmer */
+@keyframes rune-shimmer {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* Page load fade */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fade-in-up 0.6s ease-out forwards; }
+.fade-in-delay-1 { animation: fade-in-up 0.6s ease-out 0.15s both; }
+.fade-in-delay-2 { animation: fade-in-up 0.6s ease-out 0.3s both; }
+
+/* Scroll-style log */
+.scroll-log {
+  background: linear-gradient(180deg, #2a1a08 0%, #1e1106 100%);
+  border: 2px solid #5a3d1a;
+  border-radius: 4px;
+  position: relative;
+}
+.scroll-log::before, .scroll-log::after {
+  content: '';
+  display: block;
+  height: 8px;
+  background: linear-gradient(90deg, #7a5230, #c4922a, #7a5230);
+  border-radius: 2px;
+}
+
+/* Totem / carved piece icons via CSS */
+.piece-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.7));
+  text-rendering: optimizeLegibility;
+}
+
+/* Turn indicator flame */
+@keyframes flicker {
+  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 1; }
+  33% { transform: scaleY(1.08) scaleX(0.96); opacity: 0.9; }
+  66% { transform: scaleY(0.94) scaleX(1.04); opacity: 0.95; }
+}
+.flame { animation: flicker 1.8s ease-in-out infinite; display: inline-block; }
+
+/* Custom cursor for gameplay area */
+.game-cursor { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='4' fill='%23e8a020' opacity='0.8'/%3E%3C/svg%3E") 10 10, crosshair; }
