@@ -20,7 +20,7 @@ function getSVG(piece) {
   return SVGS[key] ?? SVGS[`${piece.type}_null`] ?? null;
 }
 
-export default function Cell({ row, col, piece, mace, ship, isSelected, isValidMove, isPlacementTarget, isWater: water, cellSize, onClick }) {
+export default function Cell({ row, col, piece, mace, ship, isSelected, isValidMove, isPlacementTarget, isTraitorTarget, isWater: water, cellSize, onClick }) {
   const displayPiece = piece || mace || null;
   const size = cellSize || 40;
   const isLight = (row + col) % 2 === 0;
@@ -28,10 +28,12 @@ export default function Cell({ row, col, piece, mace, ship, isSelected, isValidM
   const bgImg = water
     ? 'radial-gradient(ellipse at 30% 30%,#1e5a9a,#0a1e3a)'
     : isLight ? 'radial-gradient(ellipse at 40% 30%,#c8a870,#b09050)' : 'radial-gradient(ellipse at 60% 70%,#a07840,#8a6430)';
+  
   const outline = isSelected
     ? 'inset 0 0 0 2px #e85d04, 0 0 10px #e85d0460'
     : isValidMove ? 'inset 0 0 0 2px #6aaa40'
     : isPlacementTarget ? 'inset 0 0 0 2px #00aaff'
+    : isTraitorTarget ? 'inset 0 0 0 3px #ff4040, 0 0 12px #ff404080'
     : 'none';
 
   return (
@@ -39,19 +41,16 @@ export default function Cell({ row, col, piece, mace, ship, isSelected, isValidM
       {water && <div style={{ position:'absolute', inset:0, opacity:0.1, backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 4px,rgba(255,255,255,0.5) 4px,rgba(255,255,255,0.5) 5px)', pointerEvents:'none' }}/>}
       {!water && <div style={{ position:'absolute', inset:0, opacity:0.06, backgroundImage:'repeating-linear-gradient(87deg,transparent,transparent 3px,rgba(0,0,0,0.3) 3px,rgba(0,0,0,0.3) 4px)', pointerEvents:'none' }}/>}
       
-      {/* Ship Layer */}
       {ship && (
         <div style={{ position: 'absolute', width:'82%', height:'82%', zIndex:4, pointerEvents:'none', opacity: displayPiece ? 0.6 : 1 }}>
           {SVGS[`${PIECE_TYPES.KINGSHIP}_${ship.player}`]}
         </div>
       )}
 
-      {/* Move / Placement Dots */}
       {(isValidMove || isPlacementTarget) && !displayPiece && (
         <div style={{ width:11, height:11, borderRadius:'50%', background: isPlacementTarget ? 'radial-gradient(circle,#60ddff,#0088cc 60%)' : 'radial-gradient(circle,#8aff60,#4a8a20 60%)', boxShadow: isPlacementTarget ? '0 0 6px #00aaff' : '0 0 6px #6aaa40', zIndex:8 }}/>
       )}
 
-      {/* Piece Layer */}
       {displayPiece && (
         <div style={{ width: ship ? '60%' : '80%', height: ship ? '60%' : '80%', position:'relative', zIndex:10, transform:isSelected?'scale(1.12)':'scale(1)', transition:'transform 0.1s' }}>
           {getSVG(displayPiece)}

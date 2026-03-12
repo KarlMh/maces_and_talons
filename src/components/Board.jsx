@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import Cell from './Cell.jsx';
 import { BOARD_SIZE, PIECE_TYPES, PLAYERS } from '../game/constants.js';
-import { isWater, getPieceAt, getMaceAt, getShipAt, getPlacementMoves } from '../game/logic.js';
+import { isWater, getPieceAt, getMaceAt, getShipAt, HUNTER_TYPES } from '../game/logic.js';
 
 const COL_LABELS = 'ABCDEFGHIJKLM';
 const RUNES = 'ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛇ';
@@ -64,7 +64,21 @@ function ShipPlacementPanel({ state }) {
   );
 }
 
-export default function Board({ state, onCellClick, onActivateTraitor }) {
+function TraitorSelectionOverlay({ onCancel }) {
+  return (
+    <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:20, background:'rgba(10,6,2,0.95)', border:'2px solid #8b0000', borderRadius:8, padding:'24px 32px', textAlign:'center', minWidth:280, boxShadow:'0 8px 32px rgba(0,0,0,0.9)' }}>
+      <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:'1rem', color:'#ff8080', marginBottom:8 }}>⚔️ Traitor Ability</div>
+      <div style={{ color:'#c8a870', fontSize:'0.75rem', marginBottom:12 }}>
+        Click an enemy Hunter to replace with the Accomplice
+      </div>
+      <button onClick={onCancel} style={{ padding:'8px 24px', background:'#3d2406', border:'1px solid #888', borderRadius:4, color:'#888', fontFamily:'serif', fontSize:'0.7rem', cursor:'pointer' }}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+export default function Board({ state, onCellClick, onActivateTraitor, onDeclineTraitor }) {
   const { pieces, selectedPiece, validMoves, gamePhase, placementTurn, placingShipType } = state;
   const [cellSize, setCellSize] = useState(40);
   const [ambiguousClick, setAmbiguousClick] = useState(null);
@@ -87,7 +101,7 @@ export default function Board({ state, onCellClick, onActivateTraitor }) {
         onActivateTraitor(piece.id);
         return;
       }
-      // otherwise ignore clicks until selection made or cancelled
+      // clicking anywhere else while in traitor mode does nothing (must cancel via button)
       return;
     }
 
@@ -132,10 +146,20 @@ export default function Board({ state, onCellClick, onActivateTraitor }) {
                 const ship  = getShipAt(pieces, row, col);
                 const isSel = selectedPiece?.row===row && selectedPiece?.col===col;
                 const isVM  = validMoves.some(m => m.row===row && m.col===col);
+                
+                // Highlight enemy hunters during traitor selection
+                const isTraitorTarget = state.pendingTraitorSelection && 
+                  piece && 
+                  piece.player !== state.currentPlayer && 
+                  HUNTER_TYPES.includes(piece.type);
+                
                 return (
                   <Cell key={`${row}-${col}`} row={row} col={col}
                     piece={piece} mace={mace} ship={ship}
-                    isWater={isWater(row, col)} isSelected={isSel} isValidMove={isVM}
+                    isWater={isWater(row, col)} 
+                    isSelected={isSel} 
+                    isValidMove={isVM}
+                    isTraitorTarget={isTraitorTarget}
                     cellSize={cellSize}
                     onClick={() => handleBoardClick(row, col)} />
                 );
@@ -160,6 +184,11 @@ export default function Board({ state, onCellClick, onActivateTraitor }) {
           )}
 
           {gamePhase === 'SHIP_PLACEMENT' && <ShipPlacementPanel state={state} />}
+          {state.pendingTraitorSelection && (
+            <TraitorSelectionOverlay 
+              onCancel={onDeclineTraitor}
+            />
+          )}
         </div>
       </div>
     </div>

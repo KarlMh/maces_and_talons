@@ -1,285 +1,317 @@
-import { PIECE_TYPES, PLAYERS } from '../game/constants.js';
-import { getValidMoves, applyMove, applyTraitorAbility, checkWinCondition, HUNTER_TYPES } from '../game/logic.js';
+// ai/masterAI.js
 
-// increase depth to look 3–4 moves ahead; higher makes AI stronger but slower
-const MAX_DEPTH = 2;
+import {
+  getValidMoves,
+  applyMove,
+  applyTraitorAbility,
+  getPlacementMoves,
+  checkWinCondition
+} from "../game/logic.js";
 
-// piece values used by evaluation
-const PIECE_VALUES = {
-  [PIECE_TYPES.KING]: 150,
-  [PIECE_TYPES.DRAGON]: 60,
-  [PIECE_TYPES.TRAITOR]: 40,
-  [PIECE_TYPES.ACCOMPLICE]: 40,
-  [PIECE_TYPES.LONGSHIP]: 30,
-  [PIECE_TYPES.KINGSHIP]: 30,
-  [PIECE_TYPES.HUNTER]: 10,
+import { PIECE_TYPES, PLAYERS } from "../game/constants.js";
+
+const MAX_DEPTH = 6;
+const TIME_LIMIT = 900;
+
+const PIECE_VALUE = {
+  [PIECE_TYPES.KING]: 200,
+  [PIECE_TYPES.DRAGON]: 70,
+  [PIECE_TYPES.TRAITOR]: 60,
+  [PIECE_TYPES.ACCOMPLICE]: 60,
+  [PIECE_TYPES.HUNTER]: 20
 };
 
-// ==================== EVALUATION ====================
-function evaluate(state, aiPlayer) {
-  if (state.winner === aiPlayer) return 100000;
-  if (state.winner && state.winner !== aiPlayer) return -100000;
+let transposition = new Map();
 
-  const { pieces } = state;
-  const human = aiPlayer === PLAYERS.VIKING ? PLAYERS.MARAUDER : PLAYERS.VIKING;
+function opponent(p) {
+  return p === PLAYERS.VIKING ? PLAYERS.MARAUDER : PLAYERS.VIKING;
+}
+
+function cloneState(state) {
+  return JSON.parse(JSON.stringify(state));
+}
+
+function manhattan(a, b) {
+  return Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
+}
+
+function evaluate(state, ai) {
+
+  if (state.winner === ai) return 100000;
+  if (state.winner && state.winner !== ai) return -100000;
+
+  const enemy = opponent(ai);
+  const pieces = state.pieces;
 
   let score = 0;
 
-  const aiPieces = pieces.filter(p => p.player === aiPlayer && !p.isMaceObject);
-  const humanPieces = pieces.filter(p => p.player === human && !p.isMaceObject);
+  const aiPieces = pieces.filter(p => p.player === ai);
+  const enemyPieces = pieces.filter(p => p.player === enemy);
 
-  // piece values sum
-  aiPieces.forEach(p => { score += PIECE_VALUES[p.type] || 0; });
-  humanPieces.forEach(p => { score -= PIECE_VALUES[p.type] || 0; });
+  for (const p of aiPieces)
+    score += PIECE_VALUE[p.type] || 0;
 
-  // extra bonus for controlling special neutrals
-  aiPieces.forEach(p => {
-    if (p.type === PIECE_TYPES.DRAGON) score += 20;
-    if (p.type === PIECE_TYPES.TRAITOR) score += 15;
-    if (p.type === PIECE_TYPES.ACCOMPLICE) score += 15;
-  });
-  humanPieces.forEach(p => {
-    if (p.type === PIECE_TYPES.DRAGON) score -= 20;
-    if (p.type === PIECE_TYPES.TRAITOR) score -= 15;
-    if (p.type === PIECE_TYPES.ACCOMPLICE) score -= 15;
-  });
+  for (const p of enemyPieces)
+    score -= PIECE_VALUE[p.type] || 0;
 
-  // mace control
-  const aiHasMace = aiPieces.some(p => p.hasMace);
-  const humanHasMace = humanPieces.some(p => p.hasMace);
-  if (aiHasMace) score += 60;
-  if (humanHasMace) score -= 60;
+  const aiMace = pieces.find(p => p.player === ai && p.hasMace);
+  const enemyMace = pieces.find(p => p.player === enemy && p.hasMace);
 
-  // mobility bonus (more options = more control)
-  aiPieces.forEach(p => { score += getValidMoves(state, p).length * 0.5; });
-  humanPieces.forEach(p => { score -= getValidMoves(state, p).length * 0.5; });
+  if (aiMace) score += 120;
+  if (enemyMace) score -= 120;
 
-  // king safety and threat penalties
-  const aiKing = pieces.find(p => p.type === PIECE_TYPES.KING && p.player === aiPlayer);
-  const humanKing = pieces.find(p => p.type === PIECE_TYPES.KING && p.player === human);
-  function threatened(piece) {
-    if (!piece) return false;
-    const opponent = piece.player === PLAYERS.VIKING ? PLAYERS.MARAUDER : PLAYERS.VIKING;
-    const enemies = pieces.filter(p => p.player === opponent && HUNTER_TYPES.includes(p.type));
-    for (const e of enemies) {
-      const moves = getValidMoves(state, e);
-      if (moves.some(m => m.row === piece.row && m.col === piece.col)) return true;
-    }
-    return false;
+  const enemyKing = pieces.find(p => p.type === PIECE_TYPES.KING && p.player === enemy);
+  const aiKing = pieces.find(p => p.type === PIECE_TYPES.KING && p.player === ai);
+
+  if (aiMace && enemyKing) {
+    const d = manhattan(aiMace, enemyKing);
+    score += (20 - d) * 10;
   }
 
-  if (aiKing && threatened(aiKing)) score -= 80;
-  if (humanKing && threatened(humanKing)) score += 80;
-
-  // dragon positioning: reward being near enemy hunters
-  aiPieces.filter(p => p.type === PIECE_TYPES.DRAGON).forEach(d => {
-    const dists = humanPieces
-      .filter(h => HUNTER_TYPES.includes(h.type))
-      .map(h => Math.abs(h.row - d.row) + Math.abs(h.col - d.col));
-    if (dists.length) score += (20 - Math.min(...dists)) * 1.5;
-  });
-  humanPieces.filter(p => p.type === PIECE_TYPES.DRAGON).forEach(d => {
-    const dists = aiPieces
-      .filter(h => HUNTER_TYPES.includes(h.type))
-      .map(h => Math.abs(h.row - d.row) + Math.abs(h.col - d.col));
-    if (dists.length) score -= (20 - Math.min(...dists)) * 1.5;
-  });
-
-  // piece near friendly ship bonus
-  function nearFriendlyShip(piece) {
-    if (!piece) return 0;
-    const ships = aiPieces.filter(p => [PIECE_TYPES.LONGSHIP, PIECE_TYPES.KINGSHIP].includes(p.type));
-    for (const s of ships) {
-      if (s.shipCells && s.shipCells.some(([r, c]) => Math.abs(r - piece.row) + Math.abs(c - piece.col) <= 1)) {
-        return 5;
-      }
-    }
-    return 0;
+  if (enemyMace && aiKing) {
+    const d = manhattan(enemyMace, aiKing);
+    score -= (20 - d) * 10;
   }
-  aiPieces.forEach(p => { score += nearFriendlyShip(p); });
-  // subtract for opponent
-  function nearEnemyShip(piece) {
-    if (!piece) return 0;
-    const ships = humanPieces.filter(p => [PIECE_TYPES.LONGSHIP, PIECE_TYPES.KINGSHIP].includes(p.type));
-    for (const s of ships) {
-      if (s.shipCells && s.shipCells.some(([r, c]) => Math.abs(r - piece.row) + Math.abs(c - piece.col) <= 1)) {
-        return 5;
-      }
-    }
-    return 0;
-  }
-  humanPieces.forEach(p => { score -= nearEnemyShip(p); });
 
   return score;
 }
 
-// ==================== GET ALL MOVES ====================
-function getAllMovesForPlayer(state, player) {
+function getAllMoves(state, player) {
+
   const moves = [];
-  const playerPieces = state.pieces.filter(p => p.player === player &&
-    [PIECE_TYPES.HUNTER, PIECE_TYPES.KING, PIECE_TYPES.TRAITOR, PIECE_TYPES.ACCOMPLICE,
-     PIECE_TYPES.LONGSHIP, PIECE_TYPES.KINGSHIP].includes(p.type)
+
+  const pieces = state.pieces.filter(p =>
+    p.player === player &&
+    !p.isMaceObject
   );
 
-  for (const piece of playerPieces) {
-    const validMoves = getValidMoves(state, piece);
-    for (const move of validMoves) {
-      moves.push({ piece, move });
+  for (const piece of pieces) {
+
+    const valid = getValidMoves(state, piece);
+
+    for (const m of valid) {
+      moves.push({
+        piece,
+        move: m
+      });
     }
   }
+
   return moves;
 }
 
-// ==================== MINIMAX ====================
-function minimax(state, depth, alpha, beta, maximizing, aiPlayer) {
+function scoreMove(state, piece, move) {
+
+  let score = 0;
+
+  const target = state.pieces.find(
+    p => p.row === move.row && p.col === move.col
+  );
+
+  if (target)
+    score += 500;
+
+  if (piece.hasMace)
+    score += 300;
+
+  if (piece.type === PIECE_TYPES.DRAGON)
+    score += 100;
+
+  return score;
+}
+
+function hashState(state) {
+  return JSON.stringify(
+    state.pieces.map(p => [
+      p.id,
+      p.row,
+      p.col,
+      p.player,
+      p.hasMace
+    ])
+  );
+}
+
+function minimax(state, depth, alpha, beta, maximizing, ai) {
+
+  const hash = hashState(state);
+
+  if (transposition.has(hash))
+    return transposition.get(hash);
+
   const winner = checkWinCondition(state);
-  if (winner || depth === 0) {
-    return evaluate(state, aiPlayer);
-  }
 
-  const currentPlayer = maximizing ? aiPlayer : (aiPlayer === PLAYERS.VIKING ? PLAYERS.MARAUDER : PLAYERS.VIKING);
+  if (winner)
+    return winner === ai ? 100000 : -100000;
 
-  // Handle pending traitor ability before generating normal moves
-  if (state.pendingTraitor && state.pendingTraitor.player === currentPlayer) {
-    const opponent = currentPlayer === PLAYERS.VIKING ? PLAYERS.MARAUDER : PLAYERS.VIKING;
-    const enemyHunters = state.pieces.filter(p => p.player === opponent && HUNTER_TYPES.includes(p.type));
-    let bestVal = maximizing ? -Infinity : Infinity;
+  if (depth === 0)
+    return evaluate(state, ai);
 
-    const skipState = { ...state, pendingTraitor: null };
-    const skipEval = minimax(skipState, depth, alpha, beta, maximizing, aiPlayer);
-    bestVal = maximizing ? Math.max(bestVal, skipEval) : Math.min(bestVal, skipEval);
-    if (maximizing) alpha = Math.max(alpha, skipEval); else beta = Math.min(beta, skipEval);
+  const player = maximizing ? ai : opponent(ai);
 
-    for (const target of enemyHunters) {
-      const newState = applyTraitorAbility(state, target.id);
-      const val = minimax(newState, depth, alpha, beta, maximizing, aiPlayer);
-      bestVal = maximizing ? Math.max(bestVal, val) : Math.min(bestVal, val);
-      if (maximizing) alpha = Math.max(alpha, val); else beta = Math.min(beta, val);
-      if (beta <= alpha) break;
-    }
-
-    return bestVal;
-  }
-
-  let allMoves = getAllMovesForPlayer(state, currentPlayer);
-  if (allMoves.length === 0) return evaluate(state, aiPlayer);
-
-  // order moves to explore promising ones first (captures, etc.)
-  allMoves.sort((a, b) => {
-    const va = evaluate(applyMove(state, a.piece, a.move.row, a.move.col, a.move.shipCells), aiPlayer);
-    const vb = evaluate(applyMove(state, b.piece, b.move.row, b.move.col, b.move.shipCells), aiPlayer);
-    return maximizing ? vb - va : va - vb;
-  });
+  const moves = getAllMoves(state, player)
+    .sort((a, b) =>
+      scoreMove(state, b.piece, b.move) -
+      scoreMove(state, a.piece, a.move)
+    );
 
   if (maximizing) {
-    let maxEval = -Infinity;
-    for (const { piece, move } of allMoves) {
-      const newState = applyMove(state, piece, move.row, move.col, move.shipCells);
-      const evalScore = minimax(newState, depth - 1, alpha, beta, false, aiPlayer);
-      maxEval = Math.max(maxEval, evalScore);
-      alpha = Math.max(alpha, evalScore);
-      if (beta <= alpha) break;
+
+    let value = -Infinity;
+
+    for (const { piece, move } of moves) {
+
+      const newState = applyMove(
+        cloneState(state),
+        piece,
+        move.row,
+        move.col,
+        move.shipCells
+      );
+
+      const evalScore = minimax(
+        newState,
+        depth - 1,
+        alpha,
+        beta,
+        false,
+        ai
+      );
+
+      value = Math.max(value, evalScore);
+      alpha = Math.max(alpha, value);
+
+      if (beta <= alpha)
+        break;
     }
-    return maxEval;
+
+    transposition.set(hash, value);
+    return value;
+
   } else {
-    let minEval = Infinity;
-    for (const { piece, move } of allMoves) {
-      const newState = applyMove(state, piece, move.row, move.col, move.shipCells);
-      const evalScore = minimax(newState, depth - 1, alpha, beta, true, aiPlayer);
-      minEval = Math.min(minEval, evalScore);
-      beta = Math.min(beta, evalScore);
-      if (beta <= alpha) break;
+
+    let value = Infinity;
+
+    for (const { piece, move } of moves) {
+
+      const newState = applyMove(
+        cloneState(state),
+        piece,
+        move.row,
+        move.col,
+        move.shipCells
+      );
+
+      const evalScore = minimax(
+        newState,
+        depth - 1,
+        alpha,
+        beta,
+        true,
+        ai
+      );
+
+      value = Math.min(value, evalScore);
+      beta = Math.min(beta, value);
+
+      if (beta <= alpha)
+        break;
     }
-    return minEval;
+
+    transposition.set(hash, value);
+    return value;
   }
 }
 
-// ==================== BEST MOVE ====================
-// Iterative deepening with time limit: search at depth 1, 2, 3... until time runs out
-const TIME_LIMIT_MS = 800; // Stop search after ~800ms to stay responsive
+function getBestPlacement(state, ai) {
 
-export function getBestMove(state, aiPlayer) {
-  const startTime = Date.now();
-  
-  // if there's a pending traitor ability this player may choose to use it
-  if (state.pendingTraitor && state.pendingTraitor.player === aiPlayer) {
-    const opponent = aiPlayer === PLAYERS.VIKING ? PLAYERS.MARAUDER : PLAYERS.VIKING;
-    const enemyHunters = state.pieces.filter(p => p.player === opponent && HUNTER_TYPES.includes(p.type));
-    let bestScore = -Infinity;
-    let bestAction = { type: 'SKIP' };
+  const placements = getPlacementMoves(
+    state.pieces,
+    state.placingShipType,
+    ai
+  );
 
-    const skipEval = minimax({ ...state, pendingTraitor: null }, 1, -Infinity, Infinity, false, aiPlayer);
-    bestScore = skipEval;
+  let best = null;
+  let bestScore = -Infinity;
 
-    for (const target of enemyHunters) {
-      if (Date.now() - startTime > TIME_LIMIT_MS) break;
-      const newState = applyTraitorAbility(state, target.id);
-      const score = minimax(newState, 1, -Infinity, Infinity, false, aiPlayer);
-      if (score > bestScore) {
-        bestScore = score;
-        bestAction = { type: 'TRAITOR', targetId: target.id };
-      }
+  for (const p of placements) {
+
+    let score = 0;
+
+    const avgRow =
+      p.shipCells.reduce((a, [r]) => a + r, 0) /
+      p.shipCells.length;
+
+    if (ai === PLAYERS.VIKING)
+      score += (12 - avgRow) * 5;
+    else
+      score += avgRow * 5;
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = p;
     }
-
-    if (bestAction.type === 'TRAITOR') {
-      console.log('[AI] Activating traitor on target', bestAction.targetId);
-      return { traitor: true, targetId: bestAction.targetId };
-    }
-    console.log('[AI] Skipping traitor activation');
-    return { type: 'SKIP_TRAITOR' };
   }
 
-  const allMoves = getAllMovesForPlayer(state, aiPlayer);
-  if (allMoves.length === 0) {
-    console.warn('[AI] No moves available for', aiPlayer);
+  return best;
+}
+
+export function getBestMove(state, ai) {
+
+  if (
+    state.gamePhase === "SHIP_PLACEMENT" &&
+    state.placementTurn === ai
+  ) {
+
+    const placement = getBestPlacement(state, ai);
+
+    if (placement)
+      return {
+        placement: true,
+        ...placement
+      };
+
     return null;
   }
-  console.log('[AI] Found', allMoves.length, 'possible moves for', aiPlayer);
 
-  // look for immediate winning move
-  for (const { piece, move } of allMoves) {
-    const newState = applyMove(state, piece, move.row, move.col, move.shipCells);
-    if (newState.winner === aiPlayer) {
-      console.log('[AI] Found instant win!');
-      return { piece, move };
-    }
-  }
+  transposition.clear();
 
-  // iterative deepening: search at depth 1, 2, 3... until time limit
   let bestMove = null;
   let bestScore = -Infinity;
 
-  for (let depth = 1; depth <= 4; depth++) {
-    if (Date.now() - startTime > TIME_LIMIT_MS) {
-      console.log('[AI] Time limit reached at depth', depth);
-      break;
-    }
-    
-    console.log('[AI] Searching depth', depth);
-    let depthBestMove = null;
-    let depthBestScore = -Infinity;
-    const shuffled = [...allMoves].sort(() => Math.random() - 0.5);
+  const moves = getAllMoves(state, ai)
+    .sort((a, b) =>
+      scoreMove(state, b.piece, b.move) -
+      scoreMove(state, a.piece, a.move)
+    );
 
-    for (const { piece, move } of shuffled) {
-      if (Date.now() - startTime > TIME_LIMIT_MS) break;
-      
-      const newState = applyMove(state, piece, move.row, move.col, move.shipCells);
-      const score = minimax(newState, depth - 1, -Infinity, Infinity, false, aiPlayer);
-      if (score > depthBestScore) {
-        depthBestScore = score;
-        depthBestMove = { piece, move };
-      }
-    }
+  for (const { piece, move } of moves) {
 
-    if (depthBestMove) {
-      bestMove = depthBestMove;
-      bestScore = depthBestScore;
+    const newState = applyMove(
+      cloneState(state),
+      piece,
+      move.row,
+      move.col,
+      move.shipCells
+    );
+
+    const score = minimax(
+      newState,
+      MAX_DEPTH - 1,
+      -Infinity,
+      Infinity,
+      false,
+      ai
+    );
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = {
+        piece,
+        move
+      };
     }
   }
 
-  const elapsed = Date.now() - startTime;
-  if (bestMove) {
-    console.log('[AI] Best move:', bestMove.piece.type, 'to', bestMove.move.row, bestMove.move.col, 'score:', bestScore, 'time:', elapsed, 'ms');
-  }
   return bestMove;
 }

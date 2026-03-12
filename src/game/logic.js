@@ -46,15 +46,17 @@ function getHunterMoves(pieces, piece) {
       const water = isWater(r, c);
       const ship  = getShipAt(pieces, r, c);
       if (water) {
-        // hunters may only travel on longships; kingships (or any other ship)
-        // block movement entirely.
-        if (ship && ship.type === PIECE_TYPES.LONGSHIP) moves.push({ row: r, col: c });
+        // hunters may only travel on longships; kingships block movement
+        // also prevent stacking multiple pieces on same ship cell
+        if (ship && ship.type === PIECE_TYPES.LONGSHIP && !getPieceAt(pieces, r, c)) {
+          moves.push({ row: r, col: c });
+        }
         break; 
       }
       const occ = getPieceAt(pieces, r, c);
       // dragon square always blocks
       if (occ && occ.type === PIECE_TYPES.DRAGON) break;
-      // allow move onto enemy king if carrier has mace
+      // allow move onto enemy king ONLY if carrier has mace
       if (occ) {
         if (occ.type === PIECE_TYPES.KING && occ.player !== piece.player && piece.hasMace) {
           moves.push({ row: r, col: c });
@@ -81,7 +83,7 @@ function getKingMoves(pieces, piece) {
       if (occ && occ.type === PIECE_TYPES.DRAGON) continue;
       // maces block king movement
       if (getMaceAt(pieces, r, c)) continue;
-      // allow capture of enemy king only if this king/hunter has mace
+      // allow capture of enemy king ONLY if this king has mace
       if (occ) {
         if (!(occ.type === PIECE_TYPES.KING && occ.player !== piece.player && piece.hasMace)) {
           continue;
@@ -172,7 +174,7 @@ export function getPlacementMoves(pieces, shipType, player) {
 
 export function checkWinCondition(state) {
   const { pieces } = state;
-  const maceCarrier = pieces.find(p => p.hasMace);
+  const maceCarrier = pieces.find(p => p.hasMace && !p.isMaceObject);
   if (!maceCarrier) return null;
   const enemyKing = pieces.find(p => p.type === PIECE_TYPES.KING && p.player && p.player !== maceCarrier.player);
   if (enemyKing && enemyKing.row === maceCarrier.row && enemyKing.col === maceCarrier.col) {
@@ -189,6 +191,35 @@ export function applyMove(state, piece, targetRow, targetCol, shipCells=null) {
 
   if (!moving) return state;
 
+  // CRITICAL FIX: Check for king capture FIRST and return immediately if it's a win
+  const targetKing = pieces.find(p => 
+    p.row === targetRow && 
+    p.col === targetCol && 
+    p.type === PIECE_TYPES.KING && 
+    p.player !== moving.player &&
+    p.player !== null
+  );
+  
+  if (targetKing && moving.hasMace && (HUNTER_TYPES.includes(moving.type) || moving.type === PIECE_TYPES.KING)) {
+    // This is a winning move - execute it immediately and end the game
+    moving.row = targetRow;
+    moving.col = targetCol;
+    log.push(`${moving.player}'s ${moving.type.toLowerCase()} strikes the enemy king with the mace!`);
+    
+    return { 
+      ...state, 
+      pieces, 
+      currentPlayer: moving.player, 
+      selectedPiece: null, 
+      validMoves: [], 
+      winner: moving.player, 
+      gamePhase: 'GAME_OVER', 
+      log, 
+      pendingTraitor: null, 
+      pendingTraitorSelection: false 
+    };
+  }
+
   // dragon landing capture (move onto enemy hunter)
   if (moving.type === PIECE_TYPES.DRAGON) {
     const occ = pieces.find(p => p.row === targetRow && p.col === targetCol && p.player && HUNTER_TYPES.includes(p.type));
@@ -198,7 +229,7 @@ export function applyMove(state, piece, targetRow, targetCol, shipCells=null) {
         const nextId = pieces.reduce((m,p)=>Math.max(m,p.id),0) + 1;
         pieces.push({ id: nextId, type: PIECE_TYPES.MACE, row: targetRow, col: targetCol, isMaceObject:true });
       }
-      log.push(`${moving.player}’s dragon snags a hunter!`);
+      log.push(`${moving.player}'s dragon snags a hunter!`);
     }
   }
 
@@ -222,35 +253,44 @@ export function applyMove(state, piece, targetRow, targetCol, shipCells=null) {
       moving.hasMace = true;
       pieces = pieces.filter(p => p.id !== maceAtTarget.id);
       log.push(`${moving.player} picked up the mace!`);
-    }
+  }
+  
   moving.row = targetRow;
   moving.col = targetCol;
   if (shipCells) moving.shipCells = shipCells;
 
-  const currentPlayer = state.currentPlayer; // player who just moved
+  const currentPlayer = state.currentPlayer;
 
-  // sandwich capture of enemy hunters **and any dragon that has been claimed**
+  // sandwich capture - capture HUNTER_TYPES and DRAGONS (not Kings!)
+  // King can sandwich but cannot be sandwiched
   const toRemove = [];
   pieces.forEach(p => {
-    if (p.player && p.player !== currentPlayer && (HUNTER_TYPES.includes(p.type) || p.type === PIECE_TYPES.DRAGON)) {
-      const r = p.row, c = p.col;
-      const friend = (dr,dc) => pieces.find(q=>q.row===r+dr&&q.col===c+dc&&q.player===currentPlayer && !SHIP_TYPES.includes(q.type));
-      if (friend(0,-1) && friend(0,1)) toRemove.push(p);
-      if (friend(-1,0) && friend(1,0)) toRemove.push(p);
+    if (p.id === moving.id) return; // Don't capture the piece that just moved
+    if (p.player && p.player !== currentPlayer) {
+      // Capturable: any HUNTER_TYPES or Dragons; Not capturable: Kings
+      if (HUNTER_TYPES.includes(p.type) || p.type === PIECE_TYPES.DRAGON) {
+        const r = p.row, c = p.col;
+        // Friendly pieces that can sandwich: HUNTER_TYPES or King (any allied piece, not ships)
+        // ALLOW the moving piece to complete the sandwich
+        const friend = (dr,dc) => pieces.find(q=>q.row===r+dr&&q.col===c+dc&&q.player===currentPlayer && !SHIP_TYPES.includes(q.type) && (HUNTER_TYPES.includes(q.type) || q.type === PIECE_TYPES.KING));
+        if (friend(0,-1) && friend(0,1)) toRemove.push(p);
+        if (friend(-1,0) && friend(1,0)) toRemove.push(p);
+      }
     }
   });
   toRemove.forEach(p => {
     pieces = pieces.filter(q=>q.id!==p.id);
     if (p.hasMace) {
       const nextId = pieces.reduce((m,p)=>Math.max(m,p.id),0) + 1;
-    pieces.push({ id: nextId, type: PIECE_TYPES.MACE, row: p.row, col: p.col, isMaceObject:true });
+      pieces.push({ id: nextId, type: PIECE_TYPES.MACE, row: p.row, col: p.col, isMaceObject:true });
     }
-    log.push(`${currentPlayer} captured a hunter at ${p.row},${p.col}`);
+    log.push(`${currentPlayer} captured a ${p.type.toLowerCase()} at ${p.row},${p.col}`);
   });
 
-  // trap capture of neutral pieces
+  // trap capture of neutral pieces - NEVER capture Kings this way!
   const neutralTypes = [PIECE_TYPES.DRAGON, PIECE_TYPES.TRAITOR, PIECE_TYPES.ACCOMPLICE];
-  pieces.forEach(p => {
+  const trapVictims = [];
+  for (const p of pieces) {
     if (neutralTypes.includes(p.type) && p.player !== currentPlayer) {
       const r = p.row, c = p.col;
       const at = (rr,cc,cond) => pieces.find(q=>q.row===rr&&q.col===cc&&cond(q));
@@ -269,25 +309,27 @@ export function applyMove(state, piece, targetRow, targetCol, shipCells=null) {
         if (h) { hunterToKill = h; break; }
       }
       if (hunterToKill) {
-        pieces = pieces.filter(q=>q.id!==hunterToKill.id);
-        if (hunterToKill.hasMace) {
-          const nextId = pieces.reduce((m,p)=>Math.max(m,p.id),0) + 1;
-        pieces.push({ id: nextId, type: PIECE_TYPES.MACE, row: hunterToKill.row, col: hunterToKill.col, isMaceObject:true });
-        }
-        p.player = currentPlayer;
-        log.push(`${currentPlayer} captured ${p.type.toLowerCase()}!`);
+        trapVictims.push({ hunter: hunterToKill, trap: p });
       }
     }
-  });
+  }
+  for (const { hunter, trap } of trapVictims) {
+    pieces = pieces.filter(q=>q.id!==hunter.id);
+    if (hunter.hasMace) {
+      const nextId = pieces.reduce((m,p)=>Math.max(m,p.id),0) + 1;
+      pieces.push({ id: nextId, type: PIECE_TYPES.MACE, row: hunter.row, col: hunter.col, isMaceObject:true });
+    }
+    trap.player = currentPlayer;
+    log.push(`${currentPlayer} captured ${trap.type.toLowerCase()}!`);
+  }
 
-  // set up pending traitor ability for next player instead of auto-resolving
+  // set up pending traitor ability for next player
   let pendingTraitor = null;
   const nextPlayer = currentPlayer === PLAYERS.VIKING ? PLAYERS.MARAUDER : PLAYERS.VIKING;
   if (HUNTER_TYPES.includes(moving.type) && pieces.find(q=>q.id===moving.id)) {
     const traitor = pieces.find(q=>q.type===PIECE_TYPES.TRAITOR && q.player===nextPlayer);
     const accomplice = pieces.find(q=>q.type===PIECE_TYPES.ACCOMPLICE && q.player===nextPlayer);
     if (traitor && accomplice) {
-      // record info so UI/AI can prompt for activation
       pendingTraitor = { player: nextPlayer, movedId: moving.id, row: moving.row, col: moving.col };
       log.push(`${nextPlayer} may activate Traitor ability`);
     }
@@ -300,8 +342,6 @@ export function applyMove(state, piece, targetRow, targetCol, shipCells=null) {
   return { ...state, pieces, currentPlayer: newCurrent, selectedPiece: null, validMoves: [], winner, gamePhase, log, pendingTraitor, pendingTraitorSelection: false };
 }
 
-// Applies the traitor ability assuming state.pendingTraitor exists and the
-// caller supplies the id of the enemy hunter to replace with the accomplice.
 export function applyTraitorAbility(state, targetHunterId) {
   let pieces = state.pieces.map(p => ({ ...p }));
   let log = [...state.log];
@@ -323,7 +363,7 @@ export function applyTraitorAbility(state, targetHunterId) {
   });
   pieces = pieces.filter(p => p.id !== moved.id && p.id !== victim.id);
 
-  // move traitor & accomplice into those squares and assign to player
+  // move traitor & accomplice into those squares
   traitor.player = pending.player;
   traitor.row = moved.row;
   traitor.col = moved.col;
@@ -334,7 +374,6 @@ export function applyTraitorAbility(state, targetHunterId) {
   log.push(`${pending.player} triggers Traitor ability!`);
   return { ...state, pieces, log, pendingTraitor: null };
 }
-
 
 export function applyShipPlacement(state, shipCells) {
   let pieces = state.pieces.map(p => ({...p}));

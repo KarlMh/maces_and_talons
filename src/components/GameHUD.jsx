@@ -21,7 +21,7 @@ function ScrollPanel({ title, children }) {
   );
 }
 
-export default function GameHUD({ state, playerSide, isAIThinking, onReset, onHelp }) {
+export default function GameHUD({ state, playerSide, isAIThinking, onReset, onHelp, onTriggerTraitor, onDeclineTraitor }) {
   const { currentPlayer, gamePhase, winner, log, pieces } = state;
 
   const vikingPieces = pieces.filter(p => p.player === PLAYERS.VIKING && !p.isMaceObject).length;
@@ -94,12 +94,12 @@ export default function GameHUD({ state, playerSide, isAIThinking, onReset, onHe
 
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
         {state.pendingTraitor && currentPlayer === playerSide && !state.pendingTraitorSelection && gamePhase==='PLAYING' && (
-          <button onClick={() => onTriggerTraitor()} style={{ ...btnBase, background:'linear-gradient(180deg, #4a0a0a 0%, #1a0000 100%)', border:'2px solid #8b0000', color:'#ff8080' }}>
+          <button onClick={onTriggerTraitor} style={{ ...btnBase, background:'linear-gradient(180deg, #4a0a0a 0%, #1a0000 100%)', border:'2px solid #8b0000', color:'#ff8080' }}>
             ⚔️ Activate Traitor
           </button>
         )}
         {state.pendingTraitorSelection && state.pendingTraitor && currentPlayer === playerSide && (
-          <button onClick={() => onDeclineTraitor()} style={{ ...btnBase, background:'transparent', border:'1px dashed #888', color:'#888' }}>
+          <button onClick={onDeclineTraitor} style={{ ...btnBase, background:'transparent', border:'1px dashed #888', color:'#888' }}>
             Cancel Traitor
           </button>
         )}

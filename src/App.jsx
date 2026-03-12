@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import Board from './components/Board.jsx';
 import GameHUD from './components/GameHUD.jsx';
+import HelpModal from './components/HelpModal.jsx';
 import { useGameState } from './hooks/useGameState.js';
 import { PLAYERS } from './game/constants.js';
 
@@ -21,8 +22,8 @@ function VictoryOverlay({ winner, onReset }) {
 }
 
 export default function App() {
-  const { state, playerSide, isAIThinking, handlePlacementClick, handleGameClick, resetGame,
-          startTraitorSelection, activateTraitor, declineTraitor } = useGameState(PLAYERS.VIKING, true);
+  const { state, playerSide, isAIThinking, handlePlacementClick, handleGameClick, resetGame, startTraitorSelection, activateTraitor, declineTraitor } = useGameState(PLAYERS.VIKING, true);
+  const [showHelp, setShowHelp] = useState(false);
 
   const onCellClick = useCallback((row, col, piece) => {
     if (state.gamePhase === 'SHIP_PLACEMENT') {
@@ -36,13 +37,15 @@ export default function App() {
     <div style={{ minHeight:'100vh', background:'radial-gradient(ellipse at 50% 20%,#1e1008,#0f0804,#050302)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', position:'relative' }}>
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', background:'radial-gradient(ellipse at 20% 0%,rgba(180,80,10,0.1),transparent 60%)', zIndex:0 }}/>
       {state.winner && <VictoryOverlay winner={state.winner} onReset={resetGame} />}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       <div style={{ display:'flex', gap:24, alignItems:'flex-start', justifyContent:'center', width:'100%', maxWidth:1300, position:'relative', zIndex:1, flexWrap:'wrap' }}>
-        <Board state={state} onCellClick={onCellClick} onActivateTraitor={activateTraitor} />
-        <GameHUD
-          state={state}
-          playerSide={playerSide}
-          isAIThinking={isAIThinking}
-          onReset={resetGame}
+        <Board state={state} onCellClick={onCellClick} onActivateTraitor={activateTraitor} onDeclineTraitor={declineTraitor} />
+        <GameHUD 
+          state={state} 
+          playerSide={playerSide} 
+          isAIThinking={isAIThinking} 
+          onReset={resetGame} 
+          onHelp={() => setShowHelp(true)}
           onTriggerTraitor={startTraitorSelection}
           onDeclineTraitor={declineTraitor}
         />
