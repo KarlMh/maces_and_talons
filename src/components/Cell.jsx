@@ -24,43 +24,148 @@ export default function Cell({ row, col, piece, mace, ship, isSelected, isValidM
   const displayPiece = piece || mace || null;
   const size = cellSize || 40;
   const isLight = (row + col) % 2 === 0;
-  const bg = water ? (isLight?'#1a4878':'#12305a') : (isLight?'#c8a870':'#a07840');
-  const bgImg = water
-    ? 'radial-gradient(ellipse at 30% 30%,#1e5a9a,#0a1e3a)'
-    : isLight ? 'radial-gradient(ellipse at 40% 30%,#c8a870,#b09050)' : 'radial-gradient(ellipse at 60% 70%,#a07840,#8a6430)';
-  
-  const outline = isSelected
-    ? 'inset 0 0 0 2px #e85d04, 0 0 10px #e85d0460'
-    : isValidMove ? 'inset 0 0 0 2px #6aaa40'
-    : isPlacementTarget ? 'inset 0 0 0 2px #00aaff'
-    : isTraitorTarget ? 'inset 0 0 0 3px #ff4040, 0 0 12px #ff404080'
-    : 'none';
 
-  return (
-    <div onClick={onClick} style={{ position:'relative', width:size, height:size, display:'flex', alignItems:'center', justifyContent:'center', background:bg, backgroundImage:bgImg, border:'1px solid rgba(42,24,0,0.28)', boxShadow:outline, cursor:'pointer', boxSizing:'border-box', overflow:'visible' }}>
-      {water && <div style={{ position:'absolute', inset:0, opacity:0.1, backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 4px,rgba(255,255,255,0.5) 4px,rgba(255,255,255,0.5) 5px)', pointerEvents:'none' }}/>}
-      {!water && <div style={{ position:'absolute', inset:0, opacity:0.06, backgroundImage:'repeating-linear-gradient(87deg,transparent,transparent 3px,rgba(0,0,0,0.3) 3px,rgba(0,0,0,0.3) 4px)', pointerEvents:'none' }}/>}
-      
-      {ship && (
-        <div style={{ position: 'absolute', width:'82%', height:'82%', zIndex:4, pointerEvents:'none', opacity: displayPiece ? 0.6 : 1 }}>
-          {SVGS[`${PIECE_TYPES.KINGSHIP}_${ship.player}`]}
-        </div>
-      )}
+  const baseColors = {
+    landLight: '#9b8b6b',
+    landDark: '#8a7a5a',
+    waterLight: '#1a4878',
+    waterDark: '#12305a',
+  };
 
-      {(isValidMove || isPlacementTarget) && !displayPiece && (
-        <div style={{ width:11, height:11, borderRadius:'50%', background: isPlacementTarget ? 'radial-gradient(circle,#60ddff,#0088cc 60%)' : 'radial-gradient(circle,#8aff60,#4a8a20 60%)', boxShadow: isPlacementTarget ? '0 0 6px #00aaff' : '0 0 6px #6aaa40', zIndex:8 }}/>
-      )}
+  const bg = water ? (isLight ? baseColors.waterLight : baseColors.waterDark) : (isLight ? baseColors.landLight : baseColors.landDark);
 
+  let tileClasses = 'tile-hover ';
+  tileClasses += water ? 'water-tile' : 'stone-tile';
+
+  let selectionStyle = {};
+  if (isSelected) {
+    selectionStyle = {
+      boxShadow: 'inset 0 0 0 3px #ff7c10, 0 0 16px rgba(232,96,0,0.8)',
+      animation: 'ember-glow 1.5s ease-in-out infinite',
+      zIndex: 12,
+    };
+  } else if (isValidMove) {
+    selectionStyle = { boxShadow: 'inset 0 0 0 2px #6aaa40' };
+  } else if (isPlacementTarget) {
+    selectionStyle = { boxShadow: 'inset 0 0 0 2px #00aaff' };
+  } else if (isTraitorTarget) {
+    selectionStyle = {
+      boxShadow: 'inset 0 0 0 3px #ff4040, 0 0 12px rgba(255,64,64,0.8)',
+      animation: 'valid-pulse 0.8s ease-in-out infinite',
+    };
+  }
+
+  const renderPieceOnShip = (shipType) => (
+    <div style={{ position: 'absolute', width: '82%', height: '82%', zIndex: 110, pointerEvents: 'none' }}>
+      {SVGS[`${shipType}_${ship.player}`]}
       {displayPiece && (
-        <div style={{ width: ship ? '60%' : '80%', height: ship ? '60%' : '80%', position:'relative', zIndex:10, transform:isSelected?'scale(1.12)':'scale(1)', transition:'transform 0.1s' }}>
+        <div style={{
+          width: '85%',
+          height: '85%',
+          position: 'absolute',
+          top: '7.5%',
+          left: '7.5%',
+          zIndex: 110,
+          transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+          transition: 'transform 0.15s ease',
+          filter: isSelected ? 'drop-shadow(0 0 8px rgba(255,124,16,0.9))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+        }}>
           {getSVG(displayPiece)}
           {displayPiece.hasMace && (
-            <div style={{ position:'absolute', top:-5, right:-5, width:13, height:13, zIndex:20 }}>
-              <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#c4922a" stroke="#2a1800" strokeWidth="1.2"/><text x="8" y="11.5" textAnchor="middle" fontSize="8" fill="#2a1800" fontFamily="serif">✦</text></svg>
+            <div style={{
+              position: 'absolute', top: '-8%', right: '-8%',
+              width: '24%', height: '24%', zIndex: 120,
+              filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.5))',
+            }}>
+              <svg viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="14" fill="#c4922a" stroke="#2a1800" strokeWidth="1.5"/>
+                <text x="16" y="21" textAnchor="middle" fontSize="14" fill="#2a1800" fontFamily="serif" fontWeight="bold">✦</text>
+              </svg>
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+
+  return (
+    <div 
+      onClick={onClick} 
+      className={tileClasses}
+      style={{ 
+        position: 'relative', 
+        width: size, 
+        height: size, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: bg,
+        border: water ? '1px solid rgba(26,72,120,0.5)' : '1px solid rgba(42,24,0,0.3)',
+        boxSizing: 'border-box', 
+        overflow: 'visible',
+        cursor: 'pointer',
+        ...selectionStyle,
+      }}
+    >
+      {/* Tile textures */}
+      {water && (
+        <div style={{
+          position: 'absolute', inset: 0, opacity: 0.15,
+          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.1) 8px, rgba(255,255,255,0.1) 10px)',
+          pointerEvents: 'none',
+          animation: 'water-ripple 8s ease-in-out infinite',
+        }} />
+      )}
+      {!water && (
+        <div style={{
+          position: 'absolute', inset: 0, opacity: 0.08,
+          backgroundImage: 'repeating-linear-gradient(87deg, transparent, transparent 3px, rgba(0,0,0,0.3) 3px, rgba(0,0,0,0.3) 4px)',
+          pointerEvents: 'none',
+        }} />
+      )}
+
+      {/* Valid move / placement indicator */}
+      {(isValidMove || isPlacementTarget) && !displayPiece && (
+        <div style={{
+          width: 14, height: 14, borderRadius: '50%',
+          background: isPlacementTarget 
+            ? 'radial-gradient(circle, #60ddff, #0088cc 60%)' 
+            : 'radial-gradient(circle, #8aff60, #4a8a20 60%)',
+          boxShadow: isPlacementTarget ? '0 0 8px rgba(0,170,255,0.8)' : '0 0 8px rgba(106,170,64,0.8)',
+          zIndex: 8,
+          animation: 'move-indicator 1.5s ease-in-out infinite',
+        }} />
+      )}
+
+      {/* Ship support */}
+      {ship && (ship.type === PIECE_TYPES.KINGSHIP || ship.type === PIECE_TYPES.LONGSHIP)
+        ? renderPieceOnShip(ship.type)
+        : displayPiece && (
+          <div style={{
+            width: '85%',
+            height: '85%',
+            position: 'relative',
+            zIndex: 10,
+            transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+            transition: 'transform 0.15s ease',
+            filter: isSelected ? 'drop-shadow(0 0 8px rgba(255,124,16,0.9))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+          }}>
+            {getSVG(displayPiece)}
+            {displayPiece.hasMace && (
+              <div style={{
+                position: 'absolute', top: '-8%', right: '-8%',
+                width: '24%', height: '24%', zIndex: 20,
+                filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.5))',
+              }}>
+                <svg viewBox="0 0 32 32" fill="none">
+                  <circle cx="16" cy="16" r="14" fill="#c4922a" stroke="#2a1800" strokeWidth="1.5"/>
+                  <text x="16" y="21" textAnchor="middle" fontSize="14" fill="#2a1800" fontFamily="serif" fontWeight="bold">✦</text>
+                </svg>
+              </div>
+            )}
+          </div>
+        )
+      }
     </div>
   );
 }

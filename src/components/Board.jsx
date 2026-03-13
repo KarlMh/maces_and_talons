@@ -34,7 +34,7 @@ function LongshipOverlay({ ship, cellSize }) {
   const sail = isV ? '#c4922a' : '#8b0000';
   const strk = isV ? '#2a1800' : '#1a0800';
   return (
-    <div style={{ position:'absolute', top, left, width:w, height:h, pointerEvents:'none', zIndex:6 }}>
+    <div style={{ position:'absolute', top, left, width:w, height:h, pointerEvents:'none', zIndex:100 }}>
       <svg viewBox="0 0 100 46" preserveAspectRatio="none" style={{width:'100%',height:'100%'}}>
         <path d="M2 28 Q5 40 50 43 Q95 40 98 28 Q80 18 50 17 Q20 18 2 28Z" fill={hull} stroke={strk} strokeWidth="1.5"/>
         <path d="M2 28 Q1 23 6 20 Q25 15 50 14 Q75 15 94 20 Q99 23 98 28" fill={isV?'#a07820':'#7a1818'} stroke={strk} strokeWidth="1"/>

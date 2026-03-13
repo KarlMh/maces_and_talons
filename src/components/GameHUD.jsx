@@ -2,21 +2,82 @@ import { PLAYERS } from '../game/constants.js';
 
 function WoodDivider() {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:8, margin:'12px 0' }}>
-      <div style={{ flex:1, height:1, background:'linear-gradient(90deg, transparent, rgba(196,146,42,0.4), transparent)' }}/>
-      <span style={{ color:'#c4922a', fontSize:10, fontFamily:'serif' }}>✦</span>
-      <div style={{ flex:1, height:1, background:'linear-gradient(90deg, transparent, rgba(196,146,42,0.4), transparent)' }}/>
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: 8, 
+      margin: '12px 0',
+    }}>
+      <div style={{ 
+        flex: 1, 
+        height: '2px', 
+        background: 'linear-gradient(90deg, transparent, rgba(196,146,42,0.6), transparent)',
+        borderRadius: '1px',
+      }}/>
+      <span style={{ 
+        color: '#c4922a', 
+        fontSize: 12, 
+        fontFamily: 'serif',
+        opacity: 0.8,
+      }}>✦</span>
+      <div style={{ 
+        flex: 1, 
+        height: '2px', 
+        background: 'linear-gradient(90deg, transparent, rgba(196,146,42,0.6), transparent)',
+        borderRadius: '1px',
+      }}/>
     </div>
   );
 }
 
-function ScrollPanel({ title, children }) {
+function ScrollPanel({ title, children, icon }) {
   return (
-    <div style={{ position:'relative', borderRadius:4, background:'linear-gradient(180deg, #2a1a06 0%, #1e1106 100%)', border:'2px solid #5a3d1a', padding:'12px', boxShadow:'inset 0 1px 3px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4)' }}>
-      <div style={{ position:'absolute', top:-4, left:8, right:8, height:7, background:'linear-gradient(90deg, #7a5230, #c4922a, #7a5230)', borderRadius:'3px 3px 0 0' }}/>
-      {title && <div style={{ fontSize:'0.65rem', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:8, textAlign:'center', color:'#c4922a', fontFamily:'Georgia, serif' }}>{title}</div>}
+    <div style={{ 
+      position: 'relative', 
+      borderRadius: 6, 
+      background: 'linear-gradient(180deg, #2a1a08 0%, #1e1208 100%)', 
+      border: '2px solid #5a3d1a',
+      padding: '14px', 
+      boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.5)',
+      animation: 'fade-in 0.4s ease-out forwards',
+    }}>
+      <div style={{ 
+        position: 'absolute', 
+        top: -5, 
+        left: 12, 
+        right: 12, 
+        height: 10, 
+        background: 'linear-gradient(90deg, #7a5230 0%, #c4922a 50%, #7a5230 100%)',
+        borderRadius: '4px 4px 0 0',
+      }}/>
+      {title && (
+        <div style={{ 
+          fontSize: '0.7rem', 
+          textTransform: 'uppercase', 
+          letterSpacing: '0.15em', 
+          marginBottom: 10, 
+          textAlign: 'center', 
+          color: '#c4922a', 
+          fontFamily: "'Cinzel Decorative', serif",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+        }}>
+          {icon && <span style={{ fontSize: '0.8rem' }}>{icon}</span>}
+          {title}
+        </div>
+      )}
       {children}
-      <div style={{ position:'absolute', bottom:-4, left:8, right:8, height:7, background:'linear-gradient(90deg, #7a5230, #c4922a, #7a5230)', borderRadius:'0 0 3px 3px' }}/>
+      <div style={{ 
+        position: 'absolute', 
+        bottom: -5, 
+        left: 12, 
+        right: 12, 
+        height: 10, 
+        background: 'linear-gradient(90deg, #7a5230 0%, #c4922a 50%, #7a5230 100%)',
+        borderRadius: '0 0 4px 4px',
+      }}/>
     </div>
   );
 }
@@ -30,87 +91,338 @@ export default function GameHUD({ state, playerSide, isAIThinking, onReset, onHe
   const marauderHasMace = pieces.some(p => p.player === PLAYERS.MARAUDER && p.hasMace);
   const isVikingTurn = currentPlayer === PLAYERS.VIKING;
 
-  const titleStyle = { fontFamily:'Georgia, serif', fontSize:'1.4rem', fontWeight:700, color:'#e8c060', textShadow:'0 0 12px rgba(232,192,96,0.5), 2px 2px 4px rgba(0,0,0,0.8)', letterSpacing:'0.05em', lineHeight:1.2 };
-  const btnBase = { width:'100%', padding:'10px', borderRadius:4, fontFamily:'Georgia, serif', fontSize:'0.7rem', letterSpacing:'0.1em', cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.4)', transition:'all 0.15s' };
+  const titleStyle = { 
+    fontFamily: "'Cinzel Decorative', serif", 
+    fontSize: '1.6rem', 
+    fontWeight: 700, 
+    color: '#e8c060', 
+    textShadow: '0 0 16px rgba(232,192,96,0.6), 2px 2px 6px rgba(0,0,0,0.9)', 
+    letterSpacing: '0.08em', 
+    lineHeight: 1.3,
+    textTransform: 'uppercase',
+  };
+  
+  const btnBase = { 
+    width: '100%', 
+    padding: '11px 12px', 
+    borderRadius: 6, 
+    fontFamily: "'Cinzel Decorative', serif", 
+    fontSize: '0.75rem', 
+    letterSpacing: '0.1em', 
+    cursor: 'pointer', 
+    boxShadow: '0 4px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
+    transition: 'all 0.2s ease',
+    textTransform: 'uppercase',
+    fontWeight: 600,
+    border: 'none',
+  };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:16, minWidth:220, maxWidth:260, color:'#e8d8b0' }}>
-
-      <div style={{ textAlign:'center', padding:'8px 0' }}>
-        <div style={titleStyle}>Maces<br/>&amp; Talons</div>
-        <div style={{ fontFamily:'Georgia, serif', fontStyle:'italic', fontSize:'0.7rem', color:'#a08040', marginTop:4, letterSpacing:'0.1em' }}>of Berk — Est. 1010 AD</div>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: 12, 
+      minWidth: 240, 
+      maxWidth: 270, 
+      color: '#e8d8b0',
+      animation: 'fade-in-delay-1 0.6s ease-out both',
+    }}>
+      {/* Header */}
+      <div style={{ 
+        textAlign: 'center', 
+        padding: '12px',
+        background: 'linear-gradient(135deg, rgba(42,31,14,0.8) 0%, rgba(26,18,8,0.9) 100%)',
+        border: '2px solid #5a3d1a',
+        borderRadius: 6,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
+      }}>
+        <div style={titleStyle}>
+          ⚔️ M&T ⚔️
+        </div>
+        <div style={{ 
+          fontFamily: "'IM Fell English', serif", 
+          fontStyle: 'italic', 
+          fontSize: '0.65rem', 
+          color: '#9,8a70', 
+          marginTop: 4, 
+          letterSpacing: '0.1em',
+        }}>
+          of Berk
+        </div>
         <WoodDivider/>
       </div>
 
-      <ScrollPanel>
-        {gamePhase === 'GAME_OVER' ? (
-          <div style={{ textAlign:'center', padding:'4px 0' }}>
-            <div style={{ fontSize:'2rem' }}>⚔️</div>
-            <div style={{ fontFamily:'Georgia, serif', color:'#e8c060', fontSize:'0.9rem', marginTop:4 }}>{winner} Victory!</div>
+      {/* Status Panel */}
+      <ScrollPanel icon={gamePhase === 'SHIP_PLACEMENT' ? '⚓' : '⚔️'}>
+        {gamePhase === 'SHIP_PLACEMENT' ? (
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ 
+              fontFamily: "'IM Fell English', serif",
+              fontSize: '0.9rem', 
+              color: '#c4922a', 
+              marginBottom: 6,
+              fontWeight: 'bold',
+            }}>
+              ⚓ Ship Placement
+            </div>
+            <div style={{ 
+              fontSize: '0.7rem', 
+              color: '#a08070',
+              lineHeight: 1.4,
+              fontStyle: 'italic',
+            }}>
+              Place your vessels on the board
+            </div>
+          </div>
+        ) : winner ? (
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ fontSize: '2rem', marginBottom: 4 }}>🏆</div>
+            <div style={{ 
+              fontFamily: "'Cinzel Decorative', serif",
+              color: '#e8c060', 
+              fontSize: '0.95rem', 
+              fontWeight: 'bold',
+              marginBottom: 4,
+            }}>
+              {winner} WINS!
+            </div>
+            <div style={{ 
+              fontSize: '0.65rem', 
+              color: '#888',
+              fontStyle: 'italic',
+            }}>
+              Game Complete
+            </div>
           </div>
         ) : isAIThinking ? (
-          <div style={{ textAlign:'center', padding:'4px 0' }}>
-            <div style={{ fontSize:'1.2rem' }}>🐉</div>
-            <div style={{ fontFamily:'Georgia, serif', color:'#80b0e0', fontSize:'0.75rem', fontStyle:'italic', marginTop:2 }}>The dragon ponders...</div>
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ fontSize: '1.4rem', marginBottom: 4, animation: 'rune-shimmer 2s ease-in-out infinite' }}>🐉</div>
+            <div style={{ 
+              fontFamily: "'IM Fell English', serif",
+              color: '#80c0ff', 
+              fontSize: '0.8rem', 
+              fontStyle: 'italic',
+            }}>
+              Dragon Thinking
+            </div>
           </div>
         ) : (
-          <div style={{ textAlign:'center', padding:'4px 0' }}>
-            <div style={{ fontFamily:'Georgia, serif', fontSize:'0.65rem', color:'#806040', letterSpacing:'0.15em', marginBottom:4 }}>CURRENT TURN</div>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-              <span style={{ fontSize:'1.1rem' }}>{isVikingTurn ? '⚔️' : '🗡️'}</span>
-              <span style={{ fontFamily:'Georgia, serif', fontSize:'0.85rem', color: isVikingTurn ? '#80c0ff' : '#ff8080' }}>
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ 
+              fontFamily: "'IM Fell English', serif",
+              fontSize: '0.65rem', 
+              color: '#806040', 
+              letterSpacing: '0.15em', 
+              marginBottom: 6,
+              textTransform: 'uppercase',
+            }}>
+              Active Turn
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: 8,
+              marginBottom: 6,
+            }}>
+              <span style={{ fontSize: '1.4rem', animation: 'pulse 2s ease-in-out infinite' }}>
+                {isVikingTurn ? '⚔️' : '🗡️'}
+              </span>
+              <span style={{ 
+                fontFamily: "'Cinzel Decorative', serif",
+                fontSize: '0.95rem', 
+                fontWeight: 'bold',
+                color: isVikingTurn ? '#80c0ff' : '#ff8080',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}>
                 {isVikingTurn ? 'Vikings' : 'Marauders'}
               </span>
             </div>
-            <div style={{ color:'#806040', fontSize:'0.65rem', marginTop:3, fontStyle:'italic' }}>
-              {currentPlayer === playerSide ? '— your move —' : '— enemy moves —'}
+            <div style={{ 
+              fontSize: '0.65rem', 
+              color: '#c8a870', 
+              fontStyle: 'italic',
+            }}>
+              {currentPlayer === playerSide ? '→ Your Move' : '← Enemy Move'}
             </div>
           </div>
         )}
       </ScrollPanel>
 
-      <ScrollPanel title="Forces">
-        <div style={{ marginTop:4, marginBottom:4 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-            <span style={{ color:'#80c0ff', fontSize:'0.8rem' }}>⚔️ Vikings</span>
-            <span style={{ fontSize:'0.75rem', color:'#c8b080' }}>{vikingHasMace ? '✦ MACE  ' : ''}{vikingPieces}</span>
+      {/* Forces Panel */}
+      <ScrollPanel title="Forces" icon="⚔️">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Vikings */}
+          <div style={{ 
+            background: 'rgba(74,127,165,0.15)',
+            border: '1px solid rgba(74,127,165,0.3)',
+            borderRadius: 4,
+            padding: '8px 10px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6,
+              fontSize: '0.8rem',
+            }}>
+              <span style={{ fontSize: '1rem' }}>⚔️</span>
+              <span style={{ color: '#80c0ff', fontWeight: 'bold' }}>Vikings</span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 4,
+              fontSize: '0.8rem',
+              color: '#c8b080',
+              fontWeight: 'bold',
+            }}>
+              {vikingHasMace && <span style={{ fontSize: '0.9rem', color: '#c4922a' }}>✦</span>}
+              {vikingPieces}
+            </div>
           </div>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span style={{ color:'#ff8080', fontSize:'0.8rem' }}>🗡️ Marauders</span>
-            <span style={{ fontSize:'0.75rem', color:'#c8b080' }}>{marauderHasMace ? '✦ MACE  ' : ''}{marauderPieces}</span>
+
+          {/* Marauders */}
+          <div style={{ 
+            background: 'rgba(204,51,51,0.15)',
+            border: '1px solid rgba(204,51,51,0.3)',
+            borderRadius: 4,
+            padding: '8px 10px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6,
+              fontSize: '0.8rem',
+            }}>
+              <span style={{ fontSize: '1rem' }}>🗡️</span>
+              <span style={{ color: '#ff8080', fontWeight: 'bold' }}>Marauders</span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 4,
+              fontSize: '0.8rem',
+              color: '#c8b080',
+              fontWeight: 'bold',
+            }}>
+              {marauderHasMace && <span style={{ fontSize: '0.9rem', color: '#c4922a' }}>✦</span>}
+              {marauderPieces}
+            </div>
           </div>
         </div>
       </ScrollPanel>
 
-      <ScrollPanel title="Chronicle">
-        <div style={{ overflowY:'auto', maxHeight:100, marginTop:4, marginBottom:4 }}>
-          {[...log].reverse().slice(0, 6).map((entry, i) => (
-            <div key={i} style={{ fontFamily:'Georgia, serif', fontStyle:'italic', fontSize:'0.7rem', color: i === 0 ? '#c8b080' : '#7a6040', lineHeight:1.4, borderBottom: i < 5 ? '1px solid rgba(90,61,26,0.3)' : 'none', paddingBottom:2, marginBottom:2 }}>
+      {/* Log Panel */}
+      <ScrollPanel title="Chronicle" icon="📜">
+        <div style={{ 
+          overflowY: 'auto', 
+          maxHeight: 120, 
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}>
+          {[...log].reverse().slice(0, 5).map((entry, i) => (
+            <div 
+              key={i} 
+              style={{ 
+                fontFamily: "'IM Fell English', serif", 
+                fontStyle: 'italic', 
+                fontSize: '0.7rem', 
+                color: i === 0 ? '#e8c060' : '#a08070', 
+                lineHeight: 1.3,
+                borderBottom: i < 4 ? '1px solid rgba(90,61,26,0.2)' : 'none', 
+                paddingBottom: i < 4 ? 4 : 0,
+              }}>
               {entry}
             </div>
           ))}
         </div>
       </ScrollPanel>
 
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        {state.pendingTraitor && currentPlayer === playerSide && !state.pendingTraitorSelection && gamePhase==='PLAYING' && (
-          <button onClick={onTriggerTraitor} style={{ ...btnBase, background:'linear-gradient(180deg, #4a0a0a 0%, #1a0000 100%)', border:'2px solid #8b0000', color:'#ff8080' }}>
+      {/* Action Buttons */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {state.pendingTraitor && currentPlayer === playerSide && !state.pendingTraitorSelection && gamePhase === 'PLAYING' && (
+          <button 
+            onClick={onTriggerTraitor} 
+            style={{ 
+              ...btnBase, 
+              background: 'linear-gradient(180deg, #6a1a1a 0%, #3a0a0a 100%)', 
+              border: '2px solid #8b0000', 
+              color: '#ff8080',
+              boxShadow: '0 4px 12px rgba(139,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 6px 16px rgba(139,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 12px rgba(139,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)';
+            }}
+          >
             ⚔️ Activate Traitor
           </button>
         )}
         {state.pendingTraitorSelection && state.pendingTraitor && currentPlayer === playerSide && (
-          <button onClick={onDeclineTraitor} style={{ ...btnBase, background:'transparent', border:'1px dashed #888', color:'#888' }}>
-            Cancel Traitor
+          <button 
+            onClick={onDeclineTraitor} 
+            style={{ 
+              ...btnBase, 
+              background: 'transparent', 
+              border: '2px dashed #888', 
+              color: '#888',
+              boxShadow: 'none',
+            }}
+          >
+            Cancel Selection
           </button>
         )}
-        <button onClick={onHelp} style={{ ...btnBase, background:'linear-gradient(180deg, #1a2a0e 0%, #0e1a06 100%)', border:'2px solid #4a7a2a', color:'#90c060' }}>
-          ? How to Play
+        <button 
+          onClick={onHelp} 
+          style={{ 
+            ...btnBase, 
+            background: 'linear-gradient(180deg, #2a4a1e 0%, #1a2a0e 100%)', 
+            border: '2px solid #4a7a2a', 
+            color: '#90c060',
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.background = 'linear-gradient(180deg, #3a5a2e 0%, #2a3a1e 100%)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.background = 'linear-gradient(180deg, #2a4a1e 0%, #1a2a0e 100%)';
+          }}
+        >
+          ❓ How to Play
         </button>
-        <button onClick={onReset} style={{ ...btnBase, background:'linear-gradient(180deg, #2a1a08 0%, #1a0e04 100%)', border:'2px solid #5a3d1a', color:'#a07840' }}>
-          ᛞ New Game
+        <button 
+          onClick={onReset} 
+          style={{ 
+            ...btnBase, 
+            background: 'linear-gradient(180deg, #4a3a1a 0%, #2a1a08 100%)', 
+            border: '2px solid #6a5a2a', 
+            color: '#c4a870',
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.background = 'linear-gradient(180deg, #5a4a2a 0%, #3a2a18 100%)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.background = 'linear-gradient(180deg, #4a3a1a 0%, #2a1a08 100%)';
+          }}
+        >
+          ⟳ New Game
         </button>
       </div>
-
     </div>
   );
 }
